@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Document</title>
+    <!-- chart library -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/amcharts/3.21.12/amcharts.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/amcharts/3.21.12/serial.js"></script>
+    <script src="https://unpkg.com/@esri/cedar@1.0.0-beta.2/dist/umd/cedar.js"></script>
+    <script src="https://unpkg.com/@esri/cedar@1.0.0-beta.2/dist/umd/themes/amCharts/calcite.js"></script>
+    <link
+      rel="stylesheet"
+      href="https://js.arcgis.com/4.14/esri/themes/light/main.css"
+    />
+    <script src="https://js.arcgis.com/4.14/init.js"></script>
+    <style>
+      #chart {
+        height: 300px;
+        width: 600px;
+      }
+      html,
+      body,
+      #viewDiv {
+        padding: 0;
+        margin: 0;
+        height: 100%;
+        width: 100%;
+      }
+    </style>
+  </head>
+  <body>
+    <script>
+      let map;
+      let view;
+      require([
+        "esri/layers/FeatureLayer",
+        "esri/Map",
+        "esri/views/MapView",
+        "dojo/domReady"
+      ], function(FeatureLayer, Map, MapView) {
+        map = new Map({
+          basemap: "topo"
+        });
+
+        view = new MapView({
+          container: "viewDiv",
+          map: map,
+          zoom: 4,
+          center: [-99, 38.9]
+        });
+
+        view.surface.addEventListener(
+          "wheel",
+          function(event) {
+            event.stopImmediatePropagation();
+          },
+          true
+        );
+
+        let defaultSymbol = {
+          type: "simple-marker",
+          outline: {
+            color: [198, 12, 70, 1]
+          },
+          size: 9,
+          color: [248, 187, 37, 0.9]
+        };
+        let rend = {
+          type: "simple",
+          symbol: defaultSymbol
+        };
+        let featureLayer = new FeatureLayer({
+          url:
+            "https://services.arcgis.com/bkrWlSKcjUDFDtgw/arcgis/rest/services/It's_a_Tornado_Map/FeatureServer/0",
+          renderer: rend
+          // outFields: ["*"]
+        });
+        map.add(featureLayer);
+
+        var definition = {
+          type: "bar",
+          datasets: [
+            {
+              url:
+                "https://services.arcgis.com/bkrWlSKcjUDFDtgw/arcgis/rest/services/It's_a_Tornado_Map/FeatureServer/0",
+              query: {
+                groupByFieldsForStatistics: "state",
+                outStatistics: [
+                  {
+                    statisticType: "sum",
+                    onStatisticField: "injuries",
+                    outStatisticFieldName: "injuries_SUM"
+                  }
+                ],
+                orderByFields: "injuries_SUM DESC"
+              }
+            }
+          ],
+          series: [
+            {
+              category: {
+                field: "state",
+                label: "State"
+              },
+              value: {
+                field: "injuries_SUM",
+                label: "Injuries"
+              }
+            }
+          ]
+        };
+
+        var cedarChart = new cedar.Chart("chart", definition);
+        cedarChart.show();
+
+        view.watch("extent", function(newValue) {
+          var newExtent = JSON.stringify(newValue);
+          cedarChart.datasets()[0].query.geometry = newExtent;
+          cedarChart.show();
+        });
+      });
+    </script>
+  </body>
+  <div id="chart"></div>
+  <div id="viewDiv"></div>
+</html>
